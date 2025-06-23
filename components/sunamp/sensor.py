@@ -5,18 +5,18 @@ from esphome.components import uart
 from esphome.components import sensor
 from esphome.const import CONF_ID, CONF_INDEX, CONF_SENSORS
 
-CODEOWNERS = ["@ssieb"]
+CODEOWNERS = ["@wawyed"]
 
 DEPENDENCIES = ['uart']
 
 serial_ns = cg.esphome_ns.namespace('serial')
 
-SerialCSV = serial_ns.class_('SerialCSV', cg.Component, sensor.Sensor, uart.UARTDevice)
+Sunamp = serial_ns.class_('Sunamp', cg.Component, sensor.Sensor, uart.UARTDevice)
 
 
 CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend(
     {
-        cv.GenerateID(): cv.declare_id(SerialCSV),
+        cv.GenerateID(): cv.declare_id(Sunamp),
         cv.Required(CONF_SENSORS): cv.ensure_list(
             sensor.SENSOR_SCHEMA.extend(
                 {
