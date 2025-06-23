@@ -20,7 +20,7 @@ CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend(
         cv.Required(CONF_SENSORS): cv.ensure_list(
             sensor.SENSOR_SCHEMA.extend(
                 {
-                    cv.Required(CONF_INDEX): cv.alphanumeric,
+                    cv.Required(CONF_INDEX): cv.string,
                 }
             )
         ),
