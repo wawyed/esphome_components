@@ -21,8 +21,8 @@ class Sunamp : public Component,  public uart::UARTDevice {
 
   void dump_config() override;
 
-  void add_sensor(int index, sensor::Sensor *sens) {
-    this->sensors_.push_back(std::make_pair(index, sens));
+  void add_sensor(std::string sunamp_id, sensor::Sensor *sens) {
+    this->sensors_.push_back(std::make_pair(sunamp_id, sens));
   }
 
  protected:
