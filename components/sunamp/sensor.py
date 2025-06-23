@@ -3,7 +3,7 @@ import esphome.config_validation as cv
 from esphome import automation
 from esphome.components import uart
 from esphome.components import sensor
-from esphome.const import CONF_ID, CONF_INDEX, CONF_SENSORS
+from esphome.const import CONF_ID, CONF_SENSORS
 
 CODEOWNERS = ["@wawyed"]
 
@@ -34,5 +34,5 @@ async def to_code(config):
     await uart.register_uart_device(var, config)
     for conf in config[CONF_SENSORS]:
         sens = await sensor.new_sensor(conf)
-        index = conf[CONF_INDEX]
-        cg.add(var.add_sensor(index, sens))
+        sunamp_id = conf["sunamp_id"]
+        cg.add(var.add_sensor(sunamp_id, sens))
