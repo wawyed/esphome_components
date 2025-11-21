@@ -18,7 +18,7 @@ CONFIG_SCHEMA = uart.UART_DEVICE_SCHEMA.extend(
     {
         cv.GenerateID(): cv.declare_id(Sunamp),
         cv.Required(CONF_SENSORS): cv.ensure_list(
-            sensor.SENSOR_SCHEMA.extend(
+             sensor.sensor_schema().extend(
                 {
                     cv.Required("sunamp_id"): cv.string,
                 }
