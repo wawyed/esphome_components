@@ -11,6 +11,9 @@ namespace esphome {
     namespace serial {
         static const char *TAG = "sunamp stream";
 
+        // A real line is well under 200 characters. Anything much longer means the line ending was lost.
+        static const size_t MAX_LINE_LENGTH = 512;
+
         void Sunamp::loop() {
             while (this->available()) {
                 uint8_t c;
@@ -19,8 +22,10 @@ namespace esphome {
                     continue;
                 if (c == '\n')
                     this->parse_values_();
-                else
+                else if (this->rx_message_.size() < MAX_LINE_LENGTH)
                     this->rx_message_.push_back(c);
+                else
+                    this->rx_message_.clear();
             }
         }
 
@@ -45,41 +50,63 @@ namespace esphome {
 
         void Sunamp::parse_values_() {
             std::string s(this->rx_message_.begin(), this->rx_message_.end());
-            std::vector<std::string> values;
+            // Clear first so that every return path below leaves the buffer empty for the next line.
+            this->rx_message_.clear();
+            if (s.empty())
+                return;
+
+            // Publish the raw line so unknown fields can be inspected in the logs and in Home Assistant.
+            ESP_LOGD(TAG, "raw: %s", s.c_str());
+            if (this->raw_sensor_ != nullptr)
+                this->raw_sensor_->publish_state(s);
 
             std::vector<std::string> raw_vector = _split(s, ",");
+            if (raw_vector.size() < 4) {
+                ESP_LOGW(TAG, "ignoring short line (%d fields): %s", (int) raw_vector.size(), s.c_str());
+                return;
+            }
 
-            std::string temp1_raw = raw_vector[1];
-
-            std::vector<std::string> temp1_split = _split(temp1_raw, ":");
+            std::vector<std::string> temp1_split = _split(raw_vector[1], ":");
+            if (temp1_split.size() < 2) {
+                ESP_LOGW(TAG, "ignoring line with unexpected first field: %s", s.c_str());
+                return;
+            }
 
             _add("temp1", temp1_split[1]);
             _add("temp2", raw_vector[2]);
             _add("temp3", raw_vector[3]);
             myMap["tempAvg"] = (myMap["temp1"] + myMap["temp2"] + myMap["temp3"]) / 3;
 
-            for (int i = 4; i < raw_vector.size(); i++) {
+            for (size_t i = 4; i < raw_vector.size(); i++) {
                 std::vector<std::string> v2 = _split(raw_vector[i], ":");
 
-                if (v2.size() == 2) {
-                    std::string name = v2[0].substr(1, v2[0].size());
+                if (v2.size() == 2 && !v2[0].empty()) {
+                    // the first character of the name is a prefix marker and is dropped
+                    std::string name = v2[0].substr(1);
                     _add(name, v2[1]);
                 }
             }
 
-
-            this->rx_message_.clear();
-            for (auto sens: this->sensors_) {
-                sens.second->publish_state(myMap.at(sens.first));
+            for (auto &sens : this->sensors_) {
+                auto it = myMap.find(sens.first);
+                if (it == myMap.end()) {
+                    // not in the stream (yet): skip instead of crashing, and say so once
+                    if (this->missing_warned_.insert(sens.first).second)
+                        ESP_LOGW(TAG, "sensor '%s' not found in the stream", sens.first.c_str());
+                    continue;
+                }
+                sens.second->publish_state(it->second);
             }
         }
 
         void Sunamp::dump_config() {
             ESP_LOGCONFIG("", "Sunamp Serial Reader");
-            for (auto sens: this->sensors_) {
-                ESP_LOGCONFIG(TAG, "Index %d", sens.first);
+            for (auto &sens : this->sensors_) {
+                ESP_LOGCONFIG(TAG, "Index %s", sens.first.c_str());
                 LOG_SENSOR(TAG, "", sens.second);
             }
+            if (this->raw_sensor_ != nullptr)
+                LOG_TEXT_SENSOR(TAG, "Raw", this->raw_sensor_);
         }
     } // namespace serial
 } // namespace esphome
